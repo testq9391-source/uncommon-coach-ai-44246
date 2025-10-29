@@ -39,6 +39,7 @@ const InterviewSession = () => {
     recordingDuration,
     audioUrl,
     hasRecording,
+    transcription,
     startRecording, 
     stopRecording, 
     transcribeAudio,
@@ -228,6 +229,7 @@ const InterviewSession = () => {
     if (isRecording) {
       try {
         await stopRecording();
+        // Transcription will happen automatically in the background
       } catch (error) {
         console.error('Error stopping recording:', error);
       }
@@ -236,14 +238,12 @@ const InterviewSession = () => {
     }
   };
 
-  const handleTranscribe = async () => {
-    try {
-      const transcription = await transcribeAudio();
+  // Automatically update userAnswer when transcription is ready
+  useEffect(() => {
+    if (transcription && inputMode === 'voice') {
       setUserAnswer(transcription);
-    } catch (error) {
-      console.error('Error transcribing:', error);
     }
-  };
+  }, [transcription, inputMode]);
 
   const formatRecordingTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
@@ -256,6 +256,7 @@ const InterviewSession = () => {
       setCurrentQuestion(prev => prev + 1);
       setUserAnswer("");
       setInputMode('text');
+      cancelRecording(); // Clear any recordings and transcriptions
     }
   };
 
@@ -412,7 +413,7 @@ const InterviewSession = () => {
                         </div>
                       </div>
                     )}
-                    {hasRecording && !isVoiceProcessing && !userAnswer && (
+                    {hasRecording && !isVoiceProcessing && !transcription && (
                       <div className="text-center space-y-3 w-full">
                         <div className="w-12 h-12 mx-auto bg-green-500 rounded-full flex items-center justify-center">
                           <Mic className="w-6 h-6 text-white" />
@@ -443,59 +444,27 @@ const InterviewSession = () => {
 
                 {inputMode === 'voice' && !responses.some(r => r.questionNumber === currentQuestion) && (
                   <div className="space-y-2">
-                    {!hasRecording ? (
-                      <div className="flex gap-2">
-                        <Button
-                          onClick={handleVoiceRecord}
-                          disabled={isVoiceProcessing}
-                          className="flex-1"
-                          size="lg"
-                          variant={isRecording ? 'destructive' : 'default'}
-                        >
-                          {isRecording ? (
-                            <>
-                              <StopCircle className="w-5 h-5 mr-2" />
-                              Stop Recording
-                            </>
-                          ) : (
-                            <>
-                              <Mic className="w-5 h-5 mr-2" />
-                              Start Recording
-                            </>
-                          )}
-                        </Button>
-                        {isRecording && (
-                          <Button
-                            onClick={cancelRecording}
-                            variant="outline"
-                            size="lg"
-                          >
-                            <MicOff className="w-5 h-5" />
-                          </Button>
+                    <div className="flex gap-2">
+                      <Button
+                        onClick={handleVoiceRecord}
+                        disabled={isVoiceProcessing}
+                        className="flex-1"
+                        size="lg"
+                        variant={isRecording ? 'destructive' : 'default'}
+                      >
+                        {isRecording ? (
+                          <>
+                            <StopCircle className="w-5 h-5 mr-2" />
+                            Stop Recording
+                          </>
+                        ) : (
+                          <>
+                            <Mic className="w-5 h-5 mr-2" />
+                            {hasRecording ? 'Record Again' : 'Start Recording'}
+                          </>
                         )}
-                      </div>
-                    ) : (
-                      <div className="flex gap-2">
-                        <Button
-                          onClick={handleTranscribe}
-                          disabled={isVoiceProcessing || !!userAnswer}
-                          className="flex-1"
-                          size="lg"
-                        >
-                          {isVoiceProcessing ? (
-                            <>
-                              <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-                              Transcribing...
-                            </>
-                          ) : userAnswer ? (
-                            '✓ Transcribed'
-                          ) : (
-                            <>
-                              <Send className="w-5 h-5 mr-2" />
-                              Transcribe Audio
-                            </>
-                          )}
-                        </Button>
+                      </Button>
+                      {(isRecording || hasRecording) && (
                         <Button
                           onClick={cancelRecording}
                           variant="outline"
@@ -504,7 +473,12 @@ const InterviewSession = () => {
                         >
                           <MicOff className="w-5 h-5" />
                         </Button>
-                      </div>
+                      )}
+                    </div>
+                    {isVoiceProcessing && (
+                      <p className="text-xs text-center text-muted-foreground">
+                        Transcribing in background...
+                      </p>
                     )}
                   </div>
                 )}

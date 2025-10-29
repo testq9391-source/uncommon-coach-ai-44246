@@ -8,6 +8,7 @@ export const useVoiceRecorder = () => {
   const [recordingDuration, setRecordingDuration] = useState(0);
   const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
+  const [transcription, setTranscription] = useState<string>('');
   
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
@@ -23,6 +24,7 @@ export const useVoiceRecorder = () => {
       }
       setAudioBlob(null);
       setRecordingDuration(0);
+      setTranscription('');
       
       const stream = await navigator.mediaDevices.getUserMedia({ 
         audio: {
@@ -70,6 +72,66 @@ export const useVoiceRecorder = () => {
     }
   }, [audioUrl]);
 
+  const transcribeAudioBlob = useCallback(async (blob: Blob) => {
+    setIsProcessing(true);
+
+    try {
+      // Convert to base64
+      const reader = new FileReader();
+      const base64Promise = new Promise<string>((resolve, reject) => {
+        reader.onloadend = () => {
+          const base64Audio = reader.result?.toString().split(',')[1];
+          if (!base64Audio) {
+            reject(new Error('Failed to convert audio'));
+          } else {
+            resolve(base64Audio);
+          }
+        };
+        reader.onerror = () => reject(new Error('Failed to read audio file'));
+      });
+
+      reader.readAsDataURL(blob);
+      const base64Audio = await base64Promise;
+
+      // Send to speech-to-text function
+      console.log('Sending audio for transcription in background...');
+      const { data, error } = await supabase.functions.invoke('speech-to-text', {
+        body: { audio: base64Audio }
+      });
+
+      if (error) {
+        console.error('Transcription error:', error);
+        throw error;
+      }
+
+      const text = data?.text || '';
+      
+      if (!text) {
+        throw new Error('No transcription received. Please speak more clearly.');
+      }
+      
+      console.log('Transcription complete:', text);
+      setTranscription(text);
+      
+      toast({
+        title: "Transcription Complete",
+        description: `Transcribed ${text.split(' ').length} words.`,
+      });
+
+      return text;
+    } catch (error) {
+      console.error('Error transcribing audio:', error);
+      toast({
+        title: "Transcription Error",
+        description: error instanceof Error ? error.message : "Failed to transcribe audio",
+        variant: "destructive",
+      });
+      throw error;
+    } finally {
+      setIsProcessing(false);
+    }
+  }, []);
+
   const stopRecording = useCallback((): Promise<void> => {
     return new Promise((resolve, reject) => {
       const mediaRecorder = mediaRecorderRef.current;
@@ -97,11 +159,16 @@ export const useVoiceRecorder = () => {
           
           toast({
             title: "Recording Saved",
-            description: `${recordingDuration}s recorded. Review and transcribe when ready.`,
+            description: `${recordingDuration}s recorded. Transcribing in background...`,
           });
           
           // Stop all tracks
           mediaRecorder.stream.getTracks().forEach(track => track.stop());
+          
+          // Start background transcription
+          transcribeAudioBlob(blob).catch(err => {
+            console.error('Background transcription failed:', err);
+          });
           
           resolve();
         } catch (error) {
@@ -117,68 +184,15 @@ export const useVoiceRecorder = () => {
 
       mediaRecorder.stop();
     });
-  }, [recordingDuration]);
+  }, [recordingDuration, transcribeAudioBlob]);
 
   const transcribeAudio = useCallback(async (): Promise<string> => {
     if (!audioBlob) {
       throw new Error('No audio to transcribe');
     }
 
-    setIsProcessing(true);
-
-    try {
-      // Convert to base64
-      const reader = new FileReader();
-      const base64Promise = new Promise<string>((resolve, reject) => {
-        reader.onloadend = () => {
-          const base64Audio = reader.result?.toString().split(',')[1];
-          if (!base64Audio) {
-            reject(new Error('Failed to convert audio'));
-          } else {
-            resolve(base64Audio);
-          }
-        };
-        reader.onerror = () => reject(new Error('Failed to read audio file'));
-      });
-
-      reader.readAsDataURL(audioBlob);
-      const base64Audio = await base64Promise;
-
-      // Send to speech-to-text function
-      console.log('Sending audio for transcription...');
-      const { data, error } = await supabase.functions.invoke('speech-to-text', {
-        body: { audio: base64Audio }
-      });
-
-      if (error) {
-        console.error('Transcription error:', error);
-        throw error;
-      }
-
-      const transcription = data?.text || '';
-      
-      if (!transcription) {
-        throw new Error('No transcription received. Please speak more clearly.');
-      }
-      
-      toast({
-        title: "Transcription Complete",
-        description: `Transcribed ${transcription.split(' ').length} words.`,
-      });
-
-      setIsProcessing(false);
-      return transcription;
-    } catch (error) {
-      console.error('Error transcribing audio:', error);
-      setIsProcessing(false);
-      toast({
-        title: "Transcription Error",
-        description: error instanceof Error ? error.message : "Failed to transcribe audio",
-        variant: "destructive",
-      });
-      throw error;
-    }
-  }, [audioBlob]);
+    return transcribeAudioBlob(audioBlob);
+  }, [audioBlob, transcribeAudioBlob]);
 
   const cancelRecording = useCallback(() => {
     if (timerRef.current) {
@@ -199,6 +213,7 @@ export const useVoiceRecorder = () => {
     setAudioBlob(null);
     setAudioUrl(null);
     setRecordingDuration(0);
+    setTranscription('');
     audioChunksRef.current = [];
     
     toast({
@@ -213,6 +228,7 @@ export const useVoiceRecorder = () => {
     recordingDuration,
     audioUrl,
     hasRecording: !!audioBlob,
+    transcription,
     startRecording,
     stopRecording,
     transcribeAudio,

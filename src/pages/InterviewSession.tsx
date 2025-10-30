@@ -26,7 +26,7 @@ const InterviewSession = () => {
   const [userAnswer, setUserAnswer] = useState("");
   const [elapsedTime, setElapsedTime] = useState(0);
   const [responses, setResponses] = useState<any[]>([]);
-  const [inputMode, setInputMode] = useState<'text' | 'voice'>('text');
+  const [inputMode, setInputMode] = useState<'text' | 'voice'>('voice');
   const [isPanelCollapsed, setIsPanelCollapsed] = useState(true);
   const [isPlayingAudio, setIsPlayingAudio] = useState(false);
   const [hasPlayedIntro, setHasPlayedIntro] = useState(false);
@@ -90,7 +90,7 @@ const InterviewSession = () => {
     setHasPlayedIntro(true);
   };
 
-  const playAudio = async (text: string) => {
+  const playAudio = async (text: string): Promise<void> => {
     if (isPlayingAudio) {
       // Stop current audio
       if (audioRef.current) {
@@ -123,28 +123,32 @@ const InterviewSession = () => {
       const audioBlob = new Blob([bytes], { type: 'audio/mpeg' });
       const audioUrl = URL.createObjectURL(audioBlob);
 
-      // Create and play audio
-      const audio = new Audio(audioUrl);
-      audioRef.current = audio;
-      
-      audio.onended = () => {
-        setIsPlayingAudio(false);
-        URL.revokeObjectURL(audioUrl);
-        audioRef.current = null;
-      };
+      // Return a promise that resolves when audio finishes
+      return new Promise<void>((resolve, reject) => {
+        const audio = new Audio(audioUrl);
+        audioRef.current = audio;
+        
+        audio.onended = () => {
+          setIsPlayingAudio(false);
+          URL.revokeObjectURL(audioUrl);
+          audioRef.current = null;
+          resolve();
+        };
 
-      audio.onerror = () => {
-        setIsPlayingAudio(false);
-        toast({
-          title: "Audio Error",
-          description: "Failed to play audio. Please try again.",
-          variant: "destructive",
-        });
-        URL.revokeObjectURL(audioUrl);
-        audioRef.current = null;
-      };
+        audio.onerror = () => {
+          setIsPlayingAudio(false);
+          toast({
+            title: "Audio Error",
+            description: "Failed to play audio. Please try again.",
+            variant: "destructive",
+          });
+          URL.revokeObjectURL(audioUrl);
+          audioRef.current = null;
+          reject(new Error('Audio playback failed'));
+        };
 
-      await audio.play();
+        audio.play().catch(reject);
+      });
 
     } catch (error) {
       console.error('Error playing audio:', error);
@@ -154,6 +158,7 @@ const InterviewSession = () => {
         description: "Failed to generate audio. Please try again.",
         variant: "destructive",
       });
+      throw error;
     }
   };
 
@@ -205,10 +210,12 @@ const InterviewSession = () => {
 
       setResponses(prev => [...prev, response]);
 
-      toast({
-        title: "Success!",
-        description: "Your response has been evaluated.",
-      });
+      // Auto-advance to next question
+      if (currentQuestion < totalQuestions) {
+        setTimeout(() => {
+          handleNextQuestion();
+        }, 500);
+      }
 
     } catch (error) {
       console.error('Error processing answer:', error);
@@ -243,7 +250,7 @@ const InterviewSession = () => {
     if (currentQuestion < totalQuestions) {
       setCurrentQuestion(prev => prev + 1);
       setUserAnswer("");
-      setInputMode('text');
+      setInputMode('voice');
       if (isListening) {
         stopListening();
       }

@@ -8,8 +8,8 @@ import { Volume2, Clock, Loader2, Send, Mic, MicOff, StopCircle, ChevronDown, Ch
 import { toast } from "@/components/ui/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import aiPanelImage from "@/assets/ai-panel.jpg";
-import { uxDesignBeginnerQuestions } from "@/data/uxDesignQuestions";
-import { useVoiceRecorder } from "@/hooks/useVoiceRecorder";
+import { generateInterviewQuestions } from "@/data/interviewQuestions";
+import { useWebSpeech } from "@/hooks/useWebSpeech";
 import {
   Popover,
   PopoverContent,
@@ -30,39 +30,20 @@ const InterviewSession = () => {
   const [isPanelCollapsed, setIsPanelCollapsed] = useState(true);
   const [isPlayingAudio, setIsPlayingAudio] = useState(false);
   const [hasPlayedIntro, setHasPlayedIntro] = useState(false);
+  const [questionSet] = useState(() => generateInterviewQuestions(config.role, config.difficulty, 8));
   
   const timerRef = useRef<number | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const { 
-    isRecording, 
-    isProcessing: isVoiceProcessing, 
-    recordingDuration,
-    audioUrl,
-    hasRecording,
+    isListening, 
     transcription,
-    startRecording, 
-    stopRecording, 
-    transcribeAudio,
-    cancelRecording 
-  } = useVoiceRecorder();
-  
-  // Determine which questions to use based on configuration
-  const useUXQuestions = config.role === 'ux-design' && 
-                         config.difficulty === 'beginner' && 
-                         (config.mode === 'practice' || config.mode === 'test');
-
-  const questionSet = useUXQuestions 
-    ? uxDesignBeginnerQuestions.map(q => q.question)
-    : [
-        "Can you walk me through your process for debugging a complex issue in a production environment?",
-        "How do you stay updated with the latest technologies and best practices in your field?",
-        "Describe a challenging project you've worked on and how you overcame the obstacles.",
-        "How do you approach working with cross-functional teams?",
-        "What's your experience with agile methodologies?",
-        "How do you prioritize tasks when working on multiple projects?",
-        "Can you explain a technical concept to someone non-technical?",
-        "What are your career goals for the next 3-5 years?"
-      ];
+    interimTranscript,
+    fullTranscript,
+    isSupported,
+    startListening, 
+    stopListening, 
+    clearTranscription
+  } = useWebSpeech();
 
   const totalQuestions = questionSet.length;
   const progress = (currentQuestion / totalQuestions) * 100;
@@ -73,9 +54,9 @@ const InterviewSession = () => {
       setElapsedTime(prev => prev + 1);
     }, 1000);
 
-    // Play introduction when session starts
+    // Play introduction and first question when session starts
     if (!hasPlayedIntro) {
-      playIntroduction();
+      playIntroductionAndQuestion();
     }
 
     return () => {
@@ -87,10 +68,25 @@ const InterviewSession = () => {
     };
   }, []);
 
-  const playIntroduction = async () => {
-    const introText = `Hello! I'm Sarah, and I'll be conducting your ${config.difficulty} level ${config.role} interview today. I'm excited to learn more about your experience and skills. Let's begin with the first question. Feel free to take your time and answer either by typing or using voice recording.`;
+  // Auto-play question when it changes (but not on first load)
+  useEffect(() => {
+    if (hasPlayedIntro && currentQuestion > 1) {
+      // Small delay to let UI update
+      setTimeout(() => {
+        playAudio(questionSet[currentQuestion - 1]);
+      }, 500);
+    }
+  }, [currentQuestion, hasPlayedIntro]);
+
+  const playIntroductionAndQuestion = async () => {
+    const introText = `Hello! I'm Sarah, and I'll be conducting your ${config.difficulty} level ${config.role} interview today. I'm excited to learn more about your experience and skills. Let's begin with the first question.`;
     
     await playAudio(introText);
+    
+    // Wait a bit then play the first question
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    await playAudio(questionSet[0]);
+    
     setHasPlayedIntro(true);
   };
 
@@ -186,14 +182,16 @@ const InterviewSession = () => {
         description: "AI is evaluating your response...",
       });
 
-      const { data: evaluation, error: evaluationError } = await supabase.functions.invoke('evaluate-answer', {
-        body: {
-          question: questionSet[currentQuestion - 1],
-          answer: userAnswer,
-          role: config.role,
-          difficulty: config.difficulty
-        }
-      });
+  const { data: evaluation, error: evaluationError } = await supabase.functions.invoke('evaluate-answer', {
+    body: {
+      question: questionSet[currentQuestion - 1],
+      answer: userAnswer,
+      role: config.role,
+      difficulty: config.difficulty,
+      questionNumber: currentQuestion,
+      totalQuestions: totalQuestions
+    }
+  });
 
       if (evaluationError) throw evaluationError;
 
@@ -225,38 +223,31 @@ const InterviewSession = () => {
     }
   };
 
-  const handleVoiceRecord = async () => {
-    if (isRecording) {
-      try {
-        await stopRecording();
-        // Transcription will happen automatically in the background
-      } catch (error) {
-        console.error('Error stopping recording:', error);
-      }
+  const handleVoiceToggle = async () => {
+    if (isListening) {
+      stopListening();
     } else {
-      await startRecording();
+      clearTranscription();
+      await startListening();
     }
   };
 
-  // Automatically update userAnswer when transcription is ready
+  // Automatically update userAnswer when transcription changes
   useEffect(() => {
-    if (transcription && inputMode === 'voice') {
-      setUserAnswer(transcription);
+    if (inputMode === 'voice') {
+      setUserAnswer(fullTranscript);
     }
-  }, [transcription, inputMode]);
-
-  const formatRecordingTime = (seconds: number) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = Math.floor(seconds % 60);
-    return `${mins}:${secs.toString().padStart(2, '0')}`;
-  };
+  }, [fullTranscript, inputMode]);
 
   const handleNextQuestion = () => {
     if (currentQuestion < totalQuestions) {
       setCurrentQuestion(prev => prev + 1);
       setUserAnswer("");
       setInputMode('text');
-      cancelRecording(); // Clear any recordings and transcriptions
+      if (isListening) {
+        stopListening();
+      }
+      clearTranscription();
     }
   };
 
@@ -364,7 +355,7 @@ const InterviewSession = () => {
                       variant={inputMode === 'text' ? 'default' : 'outline'}
                       size="sm"
                       onClick={() => setInputMode('text')}
-                      disabled={isRecording || isVoiceProcessing || responses.some(r => r.questionNumber === currentQuestion)}
+                      disabled={isListening || responses.some(r => r.questionNumber === currentQuestion)}
                     >
                       Text
                     </Button>
@@ -372,7 +363,7 @@ const InterviewSession = () => {
                       variant={inputMode === 'voice' ? 'default' : 'outline'}
                       size="sm"
                       onClick={() => setInputMode('voice')}
-                      disabled={isRecording || isVoiceProcessing || responses.some(r => r.questionNumber === currentQuestion)}
+                      disabled={isListening || responses.some(r => r.questionNumber === currentQuestion)}
                     >
                       Voice
                     </Button>
@@ -389,15 +380,20 @@ const InterviewSession = () => {
                   />
                 ) : (
                   <div className="min-h-[120px] border rounded-lg flex flex-col items-center justify-center gap-4 p-6 bg-muted/30">
-                    {!isRecording && !isVoiceProcessing && !hasRecording && (
+                    {!isSupported ? (
+                      <div className="text-center space-y-2">
+                        <MicOff className="w-12 h-12 mx-auto text-muted-foreground" />
+                        <p className="text-sm text-muted-foreground">Voice input not supported in this browser</p>
+                        <p className="text-xs text-muted-foreground">Please use Chrome, Edge, or Safari</p>
+                      </div>
+                    ) : !isListening ? (
                       <div className="text-center space-y-2">
                         <Mic className="w-12 h-12 mx-auto text-muted-foreground" />
-                        <p className="text-sm text-muted-foreground">Click below to start recording your answer</p>
-                        <p className="text-xs text-muted-foreground">Speak clearly and at a normal pace</p>
+                        <p className="text-sm text-muted-foreground">Click the microphone button below to start speaking</p>
+                        <p className="text-xs text-muted-foreground">Your speech will be transcribed in real-time</p>
                       </div>
-                    )}
-                    {isRecording && (
-                      <div className="text-center space-y-3">
+                    ) : (
+                      <div className="text-center space-y-3 w-full">
                         <div className="relative">
                           <div className="w-16 h-16 mx-auto bg-destructive rounded-full flex items-center justify-center animate-pulse">
                             <Mic className="w-8 h-8 text-destructive-foreground" />
@@ -407,79 +403,45 @@ const InterviewSession = () => {
                           </div>
                         </div>
                         <div className="space-y-1">
-                          <p className="text-lg font-bold text-destructive tabular-nums">{formatRecordingTime(recordingDuration)}</p>
-                          <p className="text-sm font-medium">Recording in progress...</p>
-                          <p className="text-xs text-muted-foreground">Click stop when finished</p>
+                          <p className="text-sm font-medium text-destructive">Listening...</p>
+                          <p className="text-xs text-muted-foreground">Speak your answer now</p>
                         </div>
-                      </div>
-                    )}
-                    {hasRecording && !isVoiceProcessing && !transcription && (
-                      <div className="text-center space-y-3 w-full">
-                        <div className="w-12 h-12 mx-auto bg-green-500 rounded-full flex items-center justify-center">
-                          <Mic className="w-6 h-6 text-white" />
-                        </div>
-                        <div className="space-y-1">
-                          <p className="text-sm font-medium text-green-600">✓ Recording saved ({formatRecordingTime(recordingDuration)})</p>
-                          <p className="text-xs text-muted-foreground">Review your recording below</p>
-                        </div>
-                        {audioUrl && (
-                          <audio 
-                            controls 
-                            src={audioUrl} 
-                            className="w-full max-w-xs mx-auto"
-                            preload="metadata"
-                          />
+                        {fullTranscript && (
+                          <div className="mt-4 p-3 bg-background rounded-lg text-left">
+                            <p className="text-sm">
+                              {transcription}
+                              {interimTranscript && (
+                                <span className="text-muted-foreground italic"> {interimTranscript}</span>
+                              )}
+                            </p>
+                          </div>
                         )}
-                      </div>
-                    )}
-                    {isVoiceProcessing && (
-                      <div className="text-center space-y-2">
-                        <Loader2 className="w-12 h-12 mx-auto animate-spin text-primary" />
-                        <p className="text-sm font-medium">Transcribing your audio...</p>
-                        <p className="text-xs text-muted-foreground">This may take a moment</p>
                       </div>
                     )}
                   </div>
                 )}
 
-                {inputMode === 'voice' && !responses.some(r => r.questionNumber === currentQuestion) && (
+                {inputMode === 'voice' && !responses.some(r => r.questionNumber === currentQuestion) && isSupported && (
                   <div className="space-y-2">
-                    <div className="flex gap-2">
-                      <Button
-                        onClick={handleVoiceRecord}
-                        disabled={isVoiceProcessing}
-                        className="flex-1"
-                        size="lg"
-                        variant={isRecording ? 'destructive' : 'default'}
-                      >
-                        {isRecording ? (
-                          <>
-                            <StopCircle className="w-5 h-5 mr-2" />
-                            Stop Recording
-                          </>
-                        ) : (
-                          <>
-                            <Mic className="w-5 h-5 mr-2" />
-                            {hasRecording ? 'Record Again' : 'Start Recording'}
-                          </>
-                        )}
-                      </Button>
-                      {(isRecording || hasRecording) && (
-                        <Button
-                          onClick={cancelRecording}
-                          variant="outline"
-                          size="lg"
-                          disabled={isVoiceProcessing}
-                        >
-                          <MicOff className="w-5 h-5" />
-                        </Button>
+                    <Button
+                      onClick={handleVoiceToggle}
+                      disabled={isProcessing}
+                      className="w-full"
+                      size="lg"
+                      variant={isListening ? 'destructive' : 'default'}
+                    >
+                      {isListening ? (
+                        <>
+                          <MicOff className="w-5 h-5 mr-2" />
+                          Stop Listening
+                        </>
+                      ) : (
+                        <>
+                          <Mic className="w-5 h-5 mr-2" />
+                          Start Speaking
+                        </>
                       )}
-                    </div>
-                    {isVoiceProcessing && (
-                      <p className="text-xs text-center text-muted-foreground">
-                        Transcribing in background...
-                      </p>
-                    )}
+                    </Button>
                   </div>
                 )}
 
@@ -541,7 +503,7 @@ const InterviewSession = () => {
                   </div>
                 )}
 
-                {!isProcessing && !isVoiceProcessing && !responses.some(r => r.questionNumber === currentQuestion) && inputMode === 'text' && (
+                {!isProcessing && !responses.some(r => r.questionNumber === currentQuestion) && inputMode === 'text' && (
                   <p className="text-center text-sm text-muted-foreground">
                     Type your answer or switch to voice mode
                   </p>

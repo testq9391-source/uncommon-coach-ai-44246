@@ -11,7 +11,7 @@ serve(async (req) => {
   }
 
   try {
-    const { question, answer, role, difficulty } = await req.json();
+    const { question, answer, role, difficulty, questionNumber, totalQuestions } = await req.json();
     
     if (!question || !answer) {
       throw new Error('Question and answer are required');
@@ -23,7 +23,8 @@ serve(async (req) => {
       throw new Error('LOVABLE_API_KEY is not configured');
     }
 
-    console.log('Evaluating answer with Lovable AI...');
+    console.log(`Evaluating answer for question ${questionNumber || 1} of ${totalQuestions || 'N/A'} with Lovable AI...`);
+    console.log(`Role: ${role}, Difficulty: ${difficulty}`);
 
     const systemPrompt = `You are an expert interview coach evaluating interview responses. You must respond ONLY with valid JSON in this exact format:
 {
@@ -31,29 +32,34 @@ serve(async (req) => {
     "clarity": number (0-10),
     "confidence": number (0-10),
     "relevance": number (0-10),
-    "grammar": number (0-10)
+    "depth": number (0-10),
+    "professionalism": number (0-10)
   },
   "strengths": [string, string, string],
   "improvements": [string, string, string],
-  "feedback": "string (2-3 sentences)"
+  "feedback": "string (3-4 sentences with specific, actionable advice)"
 }
 
-Evaluate based on:
-- Clarity: How clear and well-structured is the answer?
-- Confidence: How confident and assured does the response sound?
-- Relevance: How directly does it address the question?
-- Grammar: Quality of language, sentence structure, and articulation.
+Provide a thorough evaluation based on:
+- Clarity: How clear, organized, and well-structured is the answer?
+- Confidence: How confident and assured does the response sound? Does it demonstrate self-awareness?
+- Relevance: How directly and comprehensively does it address the question?
+- Depth: How much detail, insight, and expertise is demonstrated? Are examples provided?
+- Professionalism: Quality of language, grammar, tone, and communication style.
 
-Provide 2-3 specific strengths, 2-3 areas for improvement, and overall constructive feedback.`;
+Provide 3 specific strengths highlighting what the candidate did well.
+Provide 3 specific, actionable areas for improvement with concrete suggestions.
+Give constructive feedback that encourages growth while being honest about performance.`;
 
     const userPrompt = `Role: ${role || 'General'}
 Difficulty Level: ${difficulty || 'Intermediate'}
+Question ${questionNumber || 1} of ${totalQuestions || 'several'}
 
 Question: ${question}
 
 Candidate's Answer: ${answer}
 
-Please evaluate this interview response and return the JSON format specified.`;
+Please provide a thorough evaluation in the JSON format specified. Be specific, constructive, and actionable in your feedback.`;
 
     // Call Lovable AI Gateway
     const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
@@ -110,7 +116,8 @@ Please evaluate this interview response and return the JSON format specified.`;
           clarity: 7,
           confidence: 7,
           relevance: 7,
-          grammar: 8
+          depth: 6,
+          professionalism: 8
         },
         strengths: [
           'Good attempt at answering the question',
@@ -118,11 +125,11 @@ Please evaluate this interview response and return the JSON format specified.`;
           'Clear communication style'
         ],
         improvements: [
-          'Could provide more specific examples',
-          'Consider structuring the answer better',
-          'Add more depth to key points'
+          'Could provide more specific examples from your experience',
+          'Consider structuring your answer with a clear beginning, middle, and end',
+          'Add more depth by explaining the "why" behind your approaches'
         ],
-        feedback: 'Your response shows good understanding of the topic. To improve, focus on providing more specific examples and structuring your answer with clear introduction, body, and conclusion.'
+        feedback: 'Your response shows a solid understanding of the topic and good communication skills. To elevate your answer, incorporate specific examples from your experience and provide more context about your decision-making process. Structure your response to guide the interviewer through your thinking step-by-step.'
       };
     }
 

@@ -53,7 +53,7 @@ const Index = () => {
       <section className="py-20 px-4 bg-muted/30">
         <div className="container mx-auto">
           <div className="text-center mb-16 space-y-4">
-            <h2 className="font-heading">Why Choose Uncommon Coach AI?</h2>
+            <h2 className="font-heading">Why Choose SIZA?</h2>
             <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
               Our AI-powered platform provides everything you need to ace your next interview
             </p>
@@ -129,7 +129,7 @@ const Index = () => {
         <div className="container mx-auto text-center relative z-10 space-y-8">
           <h2 className="font-heading text-white">Ready to ace your next interview?</h2>
           <p className="text-lg text-primary-foreground/90 max-w-2xl mx-auto">
-            Join thousands of students who have improved their interview skills with Uncommon Coach AI
+            Join thousands of students who have improved their interview skills with SIZA
           </p>
           <Button asChild size="lg" variant="secondary" className="hover-lift">
             <Link to="/interview-setup">Get Started Free</Link>

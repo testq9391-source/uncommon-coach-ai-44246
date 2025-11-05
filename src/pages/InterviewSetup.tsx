@@ -4,24 +4,108 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { AlertCircle, CheckCircle2, Play } from "lucide-react";
+import { AlertCircle, CheckCircle2, Play, Upload, FileText, X } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
+import { toast } from "@/components/ui/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 
 const InterviewSetup = () => {
   const navigate = useNavigate();
   const [role, setRole] = useState("");
   const [difficulty, setDifficulty] = useState("");
   const [mode, setMode] = useState("");
+  const [uploadedFile, setUploadedFile] = useState<File | null>(null);
+  const [isProcessingFile, setIsProcessingFile] = useState(false);
 
   const isReady = role && difficulty && mode;
 
-  const handleStartInterview = () => {
-    if (isReady) {
-      navigate('/interview-session', { 
-        state: { role, difficulty, mode } 
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    // Check file type (allow PDF, DOCX, TXT)
+    const allowedTypes = ['application/pdf', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'text/plain'];
+    if (!allowedTypes.includes(file.type)) {
+      toast({
+        title: "Invalid File Type",
+        description: "Please upload a PDF, DOCX, or TXT file",
+        variant: "destructive",
       });
+      return;
     }
+
+    // Check file size (max 10MB)
+    if (file.size > 10 * 1024 * 1024) {
+      toast({
+        title: "File Too Large",
+        description: "Please upload a file smaller than 10MB",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setUploadedFile(file);
+    toast({
+      title: "File Uploaded",
+      description: `${file.name} will be used to generate custom interview questions`,
+    });
+  };
+
+  const handleStartInterview = async () => {
+    if (!isReady) return;
+
+    let customQuestions = null;
+
+    // If file is uploaded, process it to generate questions
+    if (uploadedFile) {
+      setIsProcessingFile(true);
+      try {
+        // Read file content
+        const fileContent = await uploadedFile.text();
+        
+        // Call edge function to generate questions from document
+        const { data, error } = await supabase.functions.invoke('generate-interview-questions', {
+          body: {
+            documentContent: fileContent,
+            role,
+            difficulty,
+            fileName: uploadedFile.name
+          }
+        });
+
+        if (error) throw error;
+
+        customQuestions = data.questions;
+        
+        toast({
+          title: "Questions Generated",
+          description: `Created ${customQuestions.length} custom questions from your document`,
+        });
+      } catch (error) {
+        console.error('Error processing file:', error);
+        toast({
+          title: "Processing Error",
+          description: "Could not process the file. Using default questions instead.",
+          variant: "destructive",
+        });
+      } finally {
+        setIsProcessingFile(false);
+      }
+    }
+
+    navigate('/interview-session', { 
+      state: { 
+        role, 
+        difficulty, 
+        mode,
+        customQuestions // Pass custom questions if available
+      } 
+    });
+  };
+
+  const handleRemoveFile = () => {
+    setUploadedFile(null);
   };
 
   return (
@@ -81,6 +165,46 @@ const InterviewSetup = () => {
                     </SelectContent>
                   </Select>
                 </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="curriculum">Upload Curriculum (Optional)</Label>
+                  <div className="space-y-2">
+                    {!uploadedFile ? (
+                      <label 
+                        htmlFor="file-upload" 
+                        className="flex items-center justify-center gap-2 p-4 border-2 border-dashed border-border rounded-lg cursor-pointer hover:border-primary transition-colors"
+                      >
+                        <Upload className="w-5 h-5 text-muted-foreground" />
+                        <span className="text-sm text-muted-foreground">
+                          Upload PDF, DOCX, or TXT (Max 10MB)
+                        </span>
+                        <input
+                          id="file-upload"
+                          type="file"
+                          accept=".pdf,.docx,.txt"
+                          onChange={handleFileUpload}
+                          className="hidden"
+                        />
+                      </label>
+                    ) : (
+                      <div className="flex items-center gap-2 p-4 border border-border rounded-lg bg-muted/30">
+                        <FileText className="w-5 h-5 text-primary" />
+                        <span className="text-sm flex-1 truncate">{uploadedFile.name}</span>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={handleRemoveFile}
+                          className="h-6 w-6 p-0"
+                        >
+                          <X className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    )}
+                    <p className="text-xs text-muted-foreground">
+                      Upload a curriculum document to generate custom questions based on the content
+                    </p>
+                  </div>
+                </div>
               </div>
 
               <div className="pt-4">
@@ -88,10 +212,19 @@ const InterviewSetup = () => {
                   onClick={handleStartInterview}
                   className="w-full" 
                   size="lg" 
-                  disabled={!isReady}
+                  disabled={!isReady || isProcessingFile}
                 >
-                  <Play className="w-5 h-5 mr-2" />
-                  Start Interview
+                  {isProcessingFile ? (
+                    <>
+                      <Upload className="w-5 h-5 mr-2 animate-pulse" />
+                      Processing Document...
+                    </>
+                  ) : (
+                    <>
+                      <Play className="w-5 h-5 mr-2" />
+                      Start Interview
+                    </>
+                  )}
                 </Button>
               </div>
             </Card>

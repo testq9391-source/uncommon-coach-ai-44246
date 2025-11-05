@@ -1,4 +1,4 @@
-// AI Evaluation System for Uncommon Coach AI
+// AI Evaluation System for SIZA
 // Scoring weights and evaluation criteria
 
 export const EVALUATION_WEIGHTS = {
@@ -41,7 +41,7 @@ Your job is to evaluate the quality of the student's answer across four core met
 - Content Relevance
 - Communication Structure
 
-Then, provide a brief, constructive feedback summary in a friendly and motivating tone that matches Uncommon's brand — inspirational and inclusive.
+Then, provide a brief, constructive feedback summary in a friendly and motivating tone that matches SIZA's brand — inspirational and inclusive.
 
 Evaluation Criteria (weights and descriptions):
 

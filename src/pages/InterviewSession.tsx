@@ -19,18 +19,24 @@ import {
 const InterviewSession = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const config = location.state || { role: 'Software Development', difficulty: 'Expert', mode: 'practice' };
+  const config = location.state || { role: 'Software Development', difficulty: 'Expert', mode: 'practice', customQuestions: null };
   
   const [isProcessing, setIsProcessing] = useState(false);
   const [currentQuestion, setCurrentQuestion] = useState(1);
   const [userAnswer, setUserAnswer] = useState("");
-  const [elapsedTime, setElapsedTime] = useState(0);
+  const [remainingTime, setRemainingTime] = useState(30 * 60); // 30 minutes in seconds
   const [responses, setResponses] = useState<any[]>([]);
   const [inputMode, setInputMode] = useState<'text' | 'voice'>('voice');
   const [isPanelCollapsed, setIsPanelCollapsed] = useState(true);
   const [isPlayingAudio, setIsPlayingAudio] = useState(false);
   const [hasPlayedIntro, setHasPlayedIntro] = useState(false);
-  const [questionSet] = useState(() => generateInterviewQuestions(config.role, config.difficulty, 8));
+  const [questionSet] = useState(() => {
+    // Use custom questions from uploaded document if available, otherwise generate default questions
+    if (config.customQuestions && Array.isArray(config.customQuestions) && config.customQuestions.length > 0) {
+      return config.customQuestions;
+    }
+    return generateInterviewQuestions(config.role, config.difficulty, 8);
+  });
   
   const timerRef = useRef<number | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
@@ -49,9 +55,20 @@ const InterviewSession = () => {
   const progress = (currentQuestion / totalQuestions) * 100;
 
   useEffect(() => {
-    // Start timer
+    // Start countdown timer
     timerRef.current = window.setInterval(() => {
-      setElapsedTime(prev => prev + 1);
+      setRemainingTime(prev => {
+        if (prev <= 0) {
+          clearInterval(timerRef.current!);
+          toast({
+            title: "Time's Up!",
+            description: "Your interview session has ended.",
+            variant: "destructive",
+          });
+          return 0;
+        }
+        return prev - 1;
+      });
     }, 1000);
 
     // Play introduction and first question when session starts
@@ -194,7 +211,8 @@ const InterviewSession = () => {
       role: config.role,
       difficulty: config.difficulty,
       questionNumber: currentQuestion,
-      totalQuestions: totalQuestions
+      totalQuestions: totalQuestions,
+      inputMode: inputMode // Pass input mode to determine evaluation type
     }
   });
 
@@ -271,7 +289,7 @@ const InterviewSession = () => {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
               <div className="w-10 h-10 rounded-lg bg-primary flex items-center justify-center">
-                <span className="text-primary-foreground font-heading font-semibold">U</span>
+                <span className="text-primary-foreground font-heading font-semibold">S</span>
               </div>
               <div>
                 <h2 className="font-heading text-lg">{config.role} Interview</h2>
@@ -381,6 +399,9 @@ const InterviewSession = () => {
                   <Textarea
                     value={userAnswer}
                     onChange={(e) => setUserAnswer(e.target.value)}
+                    onCopy={(e) => e.preventDefault()}
+                    onPaste={(e) => e.preventDefault()}
+                    onCut={(e) => e.preventDefault()}
                     placeholder="Type your answer here..."
                     className="min-h-[120px] resize-none"
                     disabled={isProcessing || responses.some(r => r.questionNumber === currentQuestion)}
@@ -538,8 +559,10 @@ const InterviewSession = () => {
               <div className="flex items-center gap-3">
                 <Clock className="w-5 h-5 text-muted-foreground" />
                 <div>
-                  <p className="text-2xl font-bold">{formatTime(elapsedTime)}</p>
-                  <p className="text-xs text-muted-foreground">Time elapsed</p>
+                  <p className={`text-2xl font-bold ${remainingTime < 60 ? 'text-red-600' : remainingTime < 300 ? 'text-yellow-600' : ''}`}>
+                    {formatTime(remainingTime)}
+                  </p>
+                  <p className="text-xs text-muted-foreground">Time remaining</p>
                 </div>
               </div>
             </Card>

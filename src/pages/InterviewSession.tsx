@@ -30,7 +30,6 @@ const InterviewSession = () => {
   const [isPanelCollapsed, setIsPanelCollapsed] = useState(true);
   const [isPlayingAudio, setIsPlayingAudio] = useState(false);
   const [hasPlayedIntro, setHasPlayedIntro] = useState(false);
-  const [isLoadingAudio, setIsLoadingAudio] = useState(true);
   const [questionSet] = useState(() => {
     // Use custom questions from uploaded document if available, otherwise generate default questions
     if (config.customQuestions && Array.isArray(config.customQuestions) && config.customQuestions.length > 0) {
@@ -97,27 +96,15 @@ const InterviewSession = () => {
   }, [currentQuestion, hasPlayedIntro]);
 
   const playIntroductionAndQuestion = async () => {
-    try {
-      setIsLoadingAudio(true);
-      const introText = `Hello! I'm Sarah, and I'll be conducting your ${config.difficulty} level ${config.role} interview today. I'm excited to learn more about your experience and skills. Let's begin with the first question.`;
-      
-      await playAudio(introText);
-      
-      // Brief pause then play the first question
-      await new Promise(resolve => setTimeout(resolve, 800));
-      await playAudio(questionSet[0]);
-      
-      setHasPlayedIntro(true);
-    } catch (error) {
-      console.error('Error playing introduction:', error);
-      toast({
-        title: "Audio Error",
-        description: "Starting interview without audio.",
-      });
-      setHasPlayedIntro(true);
-    } finally {
-      setIsLoadingAudio(false);
-    }
+    const introText = `Hello! I'm Sarah, and I'll be conducting your ${config.difficulty} level ${config.role} interview today. I'm excited to learn more about your experience and skills. Let's begin with the first question.`;
+    
+    await playAudio(introText);
+    
+    // Wait a bit then play the first question
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    await playAudio(questionSet[0]);
+    
+    setHasPlayedIntro(true);
   };
 
   const playAudio = async (text: string): Promise<void> => {
@@ -363,35 +350,28 @@ const InterviewSession = () => {
 
             {/* Question Card */}
             <Card className="p-8 space-y-6 bg-primary/5 border-primary/20">
-              {isLoadingAudio ? (
-                <div className="flex items-center justify-center py-12 space-x-3">
-                  <Loader2 className="w-6 h-6 animate-spin text-primary" />
-                  <p className="text-lg text-muted-foreground">Preparing interview audio...</p>
-                </div>
-              ) : (
-                <>
-                  <div className="flex items-start justify-between">
-                    <div className="space-y-2 flex-1">
-                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                        <span className="font-semibold text-primary">Sarah asks:</span>
-                        <Button 
-                          variant="ghost" 
-                          size="sm"
-                          onClick={() => playAudio(questionSet[currentQuestion - 1])}
-                          disabled={isPlayingAudio}
-                        >
-                          <Volume2 className={`w-4 h-4 mr-1 ${isPlayingAudio ? 'animate-pulse' : ''}`} />
-                          {isPlayingAudio ? 'Playing...' : 'Play Audio'}
-                        </Button>
-                      </div>
-                      <p className="text-lg font-medium leading-relaxed">
-                        {questionSet[currentQuestion - 1]}
-                      </p>
-                    </div>
+              <div className="flex items-start justify-between">
+                <div className="space-y-2 flex-1">
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <span className="font-semibold text-primary">Sarah asks:</span>
+                    <Button 
+                      variant="ghost" 
+                      size="sm"
+                      onClick={() => playAudio(questionSet[currentQuestion - 1])}
+                      disabled={isPlayingAudio}
+                    >
+                      <Volume2 className={`w-4 h-4 mr-1 ${isPlayingAudio ? 'animate-pulse' : ''}`} />
+                      {isPlayingAudio ? 'Playing...' : 'Play Audio'}
+                    </Button>
                   </div>
+                  <p className="text-lg font-medium leading-relaxed">
+                    {questionSet[currentQuestion - 1]}
+                  </p>
+                </div>
+              </div>
 
-                  {/* Answer Input Interface */}
-                  <div className="space-y-4">
+              {/* Answer Input Interface */}
+              <div className="space-y-4">
                 {/* Input Mode Toggle */}
                 <div className="flex items-center justify-between">
                   <label className="text-sm font-medium">Your Answer:</label>
@@ -556,9 +536,7 @@ const InterviewSession = () => {
                     Type your answer or switch to voice mode
                   </p>
                 )}
-                  </div>
-                </>
-              )}
+              </div>
             </Card>
           </div>
 

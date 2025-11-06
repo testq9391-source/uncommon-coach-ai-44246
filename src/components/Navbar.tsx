@@ -1,10 +1,50 @@
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Menu } from "lucide-react";
-import { useState } from "react";
+import { Menu, LogOut } from "lucide-react";
+import { useState, useEffect } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
 
 const Navbar = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [userAlias, setUserAlias] = useState<string | null>(null);
+  const navigate = useNavigate();
+  const { toast } = useToast();
+
+  useEffect(() => {
+    const fetchUserProfile = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user) {
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("alias")
+          .eq("id", session.user.id)
+          .single();
+        
+        if (profile) {
+          setUserAlias(profile.alias);
+        }
+      }
+    };
+
+    fetchUserProfile();
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(() => {
+      fetchUserProfile();
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    setUserAlias(null);
+    toast({
+      title: "Logged out",
+      description: "See you next time!",
+    });
+    navigate("/");
+  };
 
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-lg border-b border-border">
@@ -24,9 +64,21 @@ const Navbar = () => {
             <Link to="/progress" className="text-sm font-medium hover:text-primary transition-colors">
               Progress
             </Link>
-            <Link to="/auth" className="text-sm font-medium hover:text-primary transition-colors">
-              Login
-            </Link>
+            {userAlias ? (
+              <>
+                <span className="text-sm font-medium text-muted-foreground">
+                  Hi, {userAlias}
+                </span>
+                <Button variant="outline" size="sm" onClick={handleLogout}>
+                  <LogOut className="w-4 h-4 mr-2" />
+                  Logout
+                </Button>
+              </>
+            ) : (
+              <Link to="/auth" className="text-sm font-medium hover:text-primary transition-colors">
+                Login
+              </Link>
+            )}
             <Button asChild>
               <Link to="/interview-setup">Start Practicing</Link>
             </Button>
@@ -48,9 +100,21 @@ const Navbar = () => {
             <Link to="/progress" className="block text-sm font-medium hover:text-primary transition-colors">
               Progress
             </Link>
-            <Link to="/auth" className="block text-sm font-medium hover:text-primary transition-colors">
-              Login
-            </Link>
+            {userAlias ? (
+              <>
+                <span className="block text-sm font-medium text-muted-foreground">
+                  Hi, {userAlias}
+                </span>
+                <Button variant="outline" size="sm" onClick={handleLogout} className="w-full">
+                  <LogOut className="w-4 h-4 mr-2" />
+                  Logout
+                </Button>
+              </>
+            ) : (
+              <Link to="/auth" className="block text-sm font-medium hover:text-primary transition-colors">
+                Login
+              </Link>
+            )}
             <Button asChild className="w-full">
               <Link to="/interview-setup">Start Practicing</Link>
             </Button>

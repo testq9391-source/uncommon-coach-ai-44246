@@ -6,8 +6,37 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Play, TrendingUp, Award, Clock } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
+import { useState, useEffect } from "react";
+import { supabase } from "@/integrations/supabase/client";
 
 const Dashboard = () => {
+  const [userAlias, setUserAlias] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchUserProfile = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user) {
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("alias")
+          .eq("id", session.user.id)
+          .single();
+        
+        if (profile) {
+          setUserAlias(profile.alias);
+        }
+      }
+    };
+
+    fetchUserProfile();
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(() => {
+      fetchUserProfile();
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
   const categories = [
     { name: "UX Design", progress: 65, sessions: 8 },
     { name: "Graphic Design", progress: 45, sessions: 5 },
@@ -23,7 +52,7 @@ const Dashboard = () => {
         <div className="container mx-auto max-w-7xl space-y-8">
           {/* Welcome Section */}
           <div className="space-y-4">
-            <h1 className="font-heading">Welcome back, Alex! 👋</h1>
+            <h1 className="font-heading">Welcome back{userAlias ? `, ${userAlias}` : ''}! 👋</h1>
             <p className="text-lg text-muted-foreground">
               Ready to continue your interview practice journey?
             </p>

@@ -17,6 +17,8 @@ const InterviewSetup = () => {
   const [mode, setMode] = useState("");
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
   const [isProcessingFile, setIsProcessingFile] = useState(false);
+  const [generatedQuestions, setGeneratedQuestions] = useState<string[] | null>(null);
+  const [showQuestions, setShowQuestions] = useState(false);
 
   const isReady = role && difficulty && mode;
 
@@ -55,57 +57,57 @@ const InterviewSetup = () => {
   const handleStartInterview = async () => {
     if (!isReady) return;
 
-    let customQuestions = null;
-
-    // If file is uploaded, process it to generate questions
-    if (uploadedFile) {
-      setIsProcessingFile(true);
-      try {
-        // Read file content
-        const fileContent = await uploadedFile.text();
-        
-        // Call edge function to generate questions from document
-        const { data, error } = await supabase.functions.invoke('generate-interview-questions', {
-          body: {
-            documentContent: fileContent,
-            role,
-            difficulty,
-            fileName: uploadedFile.name
-          }
-        });
-
-        if (error) throw error;
-
-        customQuestions = data.questions;
-        
-        toast({
-          title: "Questions Generated",
-          description: `Created ${customQuestions.length} custom questions from your document`,
-        });
-      } catch (error) {
-        console.error('Error processing file:', error);
-        toast({
-          title: "Processing Error",
-          description: "Could not process the file. Using default questions instead.",
-          variant: "destructive",
-        });
-      } finally {
-        setIsProcessingFile(false);
-      }
-    }
-
     navigate('/interview-session', { 
       state: { 
         role, 
         difficulty, 
         mode,
-        customQuestions // Pass custom questions if available
+        customQuestions: generatedQuestions // Pass custom questions if available
       } 
     });
   };
 
   const handleRemoveFile = () => {
     setUploadedFile(null);
+    setGeneratedQuestions(null);
+    setShowQuestions(false);
+  };
+
+  const handleGenerateQuestions = async () => {
+    if (!uploadedFile || !role || !difficulty) return;
+
+    setIsProcessingFile(true);
+    try {
+      const fileContent = await uploadedFile.text();
+      
+      const { data, error } = await supabase.functions.invoke('generate-interview-questions', {
+        body: {
+          documentContent: fileContent,
+          role,
+          difficulty,
+          fileName: uploadedFile.name
+        }
+      });
+
+      if (error) throw error;
+
+      setGeneratedQuestions(data.questions);
+      setShowQuestions(true);
+      
+      toast({
+        title: "Questions Generated",
+        description: `Created ${data.questions.length} custom questions from your document`,
+      });
+    } catch (error) {
+      console.error('Error processing file:', error);
+      toast({
+        title: "Processing Error",
+        description: "Could not process the file. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsProcessingFile(false);
+    }
   };
 
   return (
@@ -200,11 +202,45 @@ const InterviewSetup = () => {
                         </Button>
                       </div>
                     )}
-                    <p className="text-xs text-muted-foreground">
+                     <p className="text-xs text-muted-foreground">
                       Upload a curriculum document to generate custom questions based on the content
                     </p>
                   </div>
                 </div>
+
+                {uploadedFile && !generatedQuestions && (
+                  <Button
+                    onClick={handleGenerateQuestions}
+                    variant="outline"
+                    className="w-full"
+                    disabled={isProcessingFile || !role || !difficulty}
+                  >
+                    {isProcessingFile ? (
+                      <>
+                        <Upload className="w-5 h-5 mr-2 animate-pulse" />
+                        Generating Questions...
+                      </>
+                    ) : (
+                      'Generate Questions from Document'
+                    )}
+                  </Button>
+                )}
+
+                {showQuestions && generatedQuestions && (
+                  <div className="space-y-2 p-4 border border-border rounded-lg bg-muted/20">
+                    <h4 className="font-semibold text-sm flex items-center gap-2">
+                      <CheckCircle2 className="w-4 h-4 text-primary" />
+                      Generated Questions ({generatedQuestions.length})
+                    </h4>
+                    <div className="space-y-2 max-h-48 overflow-y-auto">
+                      {generatedQuestions.map((question, idx) => (
+                        <div key={idx} className="text-xs p-2 bg-background/50 rounded border border-border/50">
+                          {idx + 1}. {question}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
 
               <div className="pt-4">
@@ -214,17 +250,8 @@ const InterviewSetup = () => {
                   size="lg" 
                   disabled={!isReady || isProcessingFile}
                 >
-                  {isProcessingFile ? (
-                    <>
-                      <Upload className="w-5 h-5 mr-2 animate-pulse" />
-                      Processing Document...
-                    </>
-                  ) : (
-                    <>
-                      <Play className="w-5 h-5 mr-2" />
-                      Start Interview
-                    </>
-                  )}
+                  <Play className="w-5 h-5 mr-2" />
+                  Start Interview
                 </Button>
               </div>
             </Card>

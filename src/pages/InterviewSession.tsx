@@ -97,27 +97,18 @@ const InterviewSession = () => {
   }, [currentQuestion, hasPlayedIntro]);
 
   const playIntroductionAndQuestion = async () => {
-    try {
-      setIsLoadingAudio(true);
-      const introText = `Hello! I'm Sarah, and I'll be conducting your ${config.difficulty} level ${config.role} interview today. I'm excited to learn more about your experience and skills. Let's begin with the first question.`;
-      
-      await playAudio(introText);
-      
-      // Brief pause then play the first question
-      await new Promise(resolve => setTimeout(resolve, 800));
-      await playAudio(questionSet[0]);
-      
-      setHasPlayedIntro(true);
-    } catch (error) {
-      console.error('Error playing introduction:', error);
-      toast({
-        title: "Audio Error",
-        description: "Starting interview without audio.",
-      });
-      setHasPlayedIntro(true);
-    } finally {
-      setIsLoadingAudio(false);
-    }
+    setIsLoadingAudio(true);
+    
+    const introText = `Hello! I'm Sarah, and I'll be conducting your ${config.difficulty} level ${config.role} interview today. I'm excited to learn more about your experience and skills. Let's begin with the first question.`;
+    
+    await playAudio(introText);
+    
+    // Brief pause then play the first question
+    await new Promise(resolve => setTimeout(resolve, 800));
+    await playAudio(questionSet[0]);
+    
+    setHasPlayedIntro(true);
+    setIsLoadingAudio(false);
   };
 
   const playAudio = async (text: string): Promise<void> => {
@@ -135,13 +126,16 @@ const InterviewSession = () => {
     
     try {
       const { data, error } = await supabase.functions.invoke('text-to-speech', {
-        body: { 
+        body: {
           text,
-          voice: 'Charlotte' // Using Charlotte for warm, professional tone
+          voice: 'alloy' // OpenAI TTS voice (alloy, echo, fable, onyx, nova, shimmer)
         }
       });
 
-      if (error) throw error;
+      if (error) {
+        console.error('TTS API error:', error);
+        throw new Error(`TTS service error: ${error.message || 'Unknown error'}`);
+      }
       if (!data?.audioContent) throw new Error('No audio content received');
 
       // Convert base64 to audio blob
@@ -183,12 +177,21 @@ const InterviewSession = () => {
     } catch (error) {
       console.error('Error playing audio:', error);
       setIsPlayingAudio(false);
+      
+      // Check if it's a quota error
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      const isQuotaError = errorMessage.includes('quota') || errorMessage.includes('429');
+      
       toast({
-        title: "Audio Error",
-        description: "Failed to generate audio. Please try again.",
-        variant: "destructive",
+        title: "TTS Unavailable",
+        description: isQuotaError 
+          ? "TTS API quota exceeded. Continuing in text-only mode." 
+          : "Audio unavailable. Continuing in text-only mode.",
+        variant: "default",
       });
-      throw error;
+      
+      // Don't throw - allow interview to continue without audio
+      return Promise.resolve();
     }
   };
 

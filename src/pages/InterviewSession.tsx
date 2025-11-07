@@ -128,7 +128,7 @@ const InterviewSession = () => {
       const { data, error } = await supabase.functions.invoke('text-to-speech', {
         body: {
           text,
-          voice: 'alloy' // OpenAI TTS voice (alloy, echo, fable, onyx, nova, shimmer)
+          voice: 'XB0fDUnXU5powFXDhCwa' // Charlotte - warm, professional tone
         }
       });
 

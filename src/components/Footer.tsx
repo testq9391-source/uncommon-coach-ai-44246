@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import sizaLogo from "@/assets/siza-logo.png";
 
 const Footer = () => {
   return (
@@ -6,12 +7,13 @@ const Footer = () => {
       <div className="container mx-auto px-4 lg:px-8 py-12">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
           <div className="space-y-4">
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
-                <span className="text-primary-foreground font-heading font-semibold text-lg">U</span>
-              </div>
-              <span className="font-heading text-lg font-semibold">Uncommon</span>
-            </div>
+            <Link to="/" className="flex items-center gap-2">
+              <img 
+                src={sizaLogo} 
+                alt="SIZA Logo" 
+                className="h-12 w-auto"
+              />
+            </Link>
             <p className="text-sm text-muted-foreground">
               Empowering young people to succeed in tech through AI-powered interview practice.
             </p>
@@ -45,7 +47,7 @@ const Footer = () => {
         </div>
 
         <div className="border-t border-border mt-8 pt-8 text-center text-sm text-muted-foreground">
-          <p>© 2024 Uncommon. Making tech accessible for everyone.</p>
+          <p>© 2024 SIZA. Making tech accessible for everyone.</p>
         </div>
       </div>
     </footer>

@@ -4,6 +4,7 @@ import { Menu, LogOut } from "lucide-react";
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import sizaLogo from "@/assets/siza-logo.jpg";
 
 const Navbar = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -51,10 +52,7 @@ const Navbar = () => {
       <div className="container mx-auto px-4 lg:px-8">
         <div className="flex items-center justify-between h-16">
           <Link to="/" className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
-              <span className="text-primary-foreground font-heading font-semibold text-lg">S</span>
-            </div>
-            <span className="font-heading text-xl font-semibold">SIZA</span>
+            <img src={sizaLogo} alt="SIZA Logo" className="h-10" />
           </Link>
 
           <div className="hidden md:flex items-center gap-8">

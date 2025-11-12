@@ -61,7 +61,7 @@ const Navbar = () => {
       <div className="container mx-auto px-4 lg:px-8">
         <div className="flex items-center justify-between h-16">
           <Link to="/" className="flex items-center gap-2">
-            <img src={sizaLogo} alt="SIZA Logo" className="h-16 w-auto" />
+            <img src={sizaLogo} alt="SIZA Logo" className="h-20 w-auto" />
           </Link>
 
           <div className="hidden md:flex items-center gap-8">

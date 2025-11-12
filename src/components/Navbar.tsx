@@ -1,10 +1,19 @@
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Menu, LogOut } from "lucide-react";
+import { Menu, LogOut, Settings, User } from "lucide-react";
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import sizaLogo from "@/assets/siza-logo.jpg";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import sizaLogo from "@/assets/siza-logo.png";
 
 const Navbar = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -52,7 +61,7 @@ const Navbar = () => {
       <div className="container mx-auto px-4 lg:px-8">
         <div className="flex items-center justify-between h-16">
           <Link to="/" className="flex items-center gap-2">
-            <img src={sizaLogo} alt="SIZA Logo" className="h-10" />
+            <img src={sizaLogo} alt="SIZA Logo" className="h-14" />
           </Link>
 
           <div className="hidden md:flex items-center gap-8">
@@ -64,22 +73,51 @@ const Navbar = () => {
             </Link>
             {userAlias ? (
               <>
-                <span className="text-sm font-medium text-muted-foreground">
-                  Hi, {userAlias}
-                </span>
-                <Button variant="outline" size="sm" onClick={handleLogout}>
-                  <LogOut className="w-4 h-4 mr-2" />
-                  Logout
+                <Button asChild>
+                  <Link to="/interview-setup">Start Practicing</Link>
                 </Button>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" className="relative h-10 w-10 rounded-full">
+                      <Avatar className="h-10 w-10">
+                        <AvatarFallback className="bg-primary text-primary-foreground">
+                          {userAlias.charAt(0).toUpperCase()}
+                        </AvatarFallback>
+                      </Avatar>
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent className="w-56" align="end" forceMount>
+                    <DropdownMenuLabel className="font-normal">
+                      <div className="flex flex-col space-y-1">
+                        <p className="text-sm font-medium leading-none">{userAlias}</p>
+                        <p className="text-xs leading-none text-muted-foreground">
+                          Account
+                        </p>
+                      </div>
+                    </DropdownMenuLabel>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem>
+                      <Settings className="mr-2 h-4 w-4" />
+                      <span>Settings</span>
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={handleLogout}>
+                      <LogOut className="mr-2 h-4 w-4" />
+                      <span>Logout</span>
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </>
             ) : (
-              <Link to="/auth" className="text-sm font-medium hover:text-primary transition-colors">
-                Login
-              </Link>
+              <>
+                <Link to="/auth" className="text-sm font-medium hover:text-primary transition-colors">
+                  Login
+                </Link>
+                <Button asChild>
+                  <Link to="/interview-setup">Start Practicing</Link>
+                </Button>
+              </>
             )}
-            <Button asChild>
-              <Link to="/interview-setup">Start Practicing</Link>
-            </Button>
           </div>
 
           <button
@@ -100,22 +138,39 @@ const Navbar = () => {
             </Link>
             {userAlias ? (
               <>
-                <span className="block text-sm font-medium text-muted-foreground">
-                  Hi, {userAlias}
-                </span>
+                <div className="flex items-center gap-3 px-2 py-2">
+                  <Avatar className="h-10 w-10">
+                    <AvatarFallback className="bg-primary text-primary-foreground">
+                      {userAlias.charAt(0).toUpperCase()}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div>
+                    <p className="text-sm font-medium">{userAlias}</p>
+                    <p className="text-xs text-muted-foreground">Account</p>
+                  </div>
+                </div>
+                <Button asChild className="w-full">
+                  <Link to="/interview-setup">Start Practicing</Link>
+                </Button>
+                <Button variant="outline" size="sm" className="w-full">
+                  <Settings className="w-4 h-4 mr-2" />
+                  Settings
+                </Button>
                 <Button variant="outline" size="sm" onClick={handleLogout} className="w-full">
                   <LogOut className="w-4 h-4 mr-2" />
                   Logout
                 </Button>
               </>
             ) : (
-              <Link to="/auth" className="block text-sm font-medium hover:text-primary transition-colors">
-                Login
-              </Link>
+              <>
+                <Link to="/auth" className="block text-sm font-medium hover:text-primary transition-colors">
+                  Login
+                </Link>
+                <Button asChild className="w-full">
+                  <Link to="/interview-setup">Start Practicing</Link>
+                </Button>
+              </>
             )}
-            <Button asChild className="w-full">
-              <Link to="/interview-setup">Start Practicing</Link>
-            </Button>
           </div>
         )}
       </div>

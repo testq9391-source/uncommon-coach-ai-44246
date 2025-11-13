@@ -19,7 +19,17 @@ export const generalQuestions = [
 // Role-specific question banks
 export const questionsByRole: Record<string, string[]> = {
   'ux-design': uxDesignBeginnerQuestions.map(q => q.question),
-  'Software Development': [
+  'graphic-design': [
+    "What design software and tools are you most proficient in?",
+    "Can you walk me through your creative process from brief to final design?",
+    "How do you handle feedback and revisions from clients or stakeholders?",
+    "Describe a project where you had to balance creativity with brand guidelines.",
+    "How do you stay inspired and keep up with design trends?",
+    "Tell me about a time you had to design under tight deadlines.",
+    "What's your approach to creating designs for different mediums (print vs digital)?",
+    "How do you ensure your designs are accessible and inclusive?",
+  ],
+  'software-dev': [
     "Can you walk me through your process for debugging a complex issue in a production environment?",
     "How do you stay updated with the latest technologies and best practices in your field?",
     "Describe a challenging project you've worked on and how you overcame the obstacles.",
@@ -29,35 +39,15 @@ export const questionsByRole: Record<string, string[]> = {
     "What testing strategies do you use in your development process?",
     "How do you handle technical debt in a project?",
   ],
-  'Product Management': [
-    "How do you prioritize features in a product roadmap?",
-    "Describe your experience with agile methodologies.",
-    "How do you gather and validate user requirements?",
-    "Tell me about a time you had to make a difficult product decision.",
-    "How do you measure product success?",
-    "How do you handle stakeholder conflicts?",
-    "What's your approach to competitive analysis?",
-    "How do you balance technical constraints with user needs?",
-  ],
-  'Data Science': [
-    "Explain your approach to exploratory data analysis.",
-    "How do you handle missing or inconsistent data?",
-    "Describe a machine learning project you've worked on.",
-    "What's the difference between supervised and unsupervised learning?",
-    "How do you evaluate the performance of a machine learning model?",
-    "Tell me about a time you had to explain a complex analysis to non-technical stakeholders.",
-    "What tools and technologies do you prefer for data analysis?",
-    "How do you ensure the ethical use of data in your work?",
-  ],
-  'Marketing': [
-    "How do you measure the success of a marketing campaign?",
-    "Describe your experience with digital marketing channels.",
-    "How do you identify and target your ideal customer?",
-    "Tell me about a successful campaign you've led.",
-    "How do you stay updated with marketing trends?",
-    "What's your approach to brand positioning?",
-    "How do you handle budget constraints in marketing?",
-    "Describe your experience with marketing analytics tools.",
+  'digital-marketing': [
+    "How do you measure the success of a digital marketing campaign?",
+    "Describe your experience with SEO and SEM strategies.",
+    "What social media platforms do you have the most experience with?",
+    "Tell me about a successful digital campaign you've led and the results achieved.",
+    "How do you stay updated with the latest digital marketing trends and algorithm changes?",
+    "What tools do you use for analytics and performance tracking?",
+    "How do you approach audience segmentation and targeting?",
+    "Describe your experience with email marketing and automation.",
   ],
 };
 
@@ -77,7 +67,7 @@ export const generateInterviewQuestions = (
   difficulty: string,
   numQuestions: number = 8
 ): string[] => {
-  const roleQuestions = questionsByRole[role] || questionsByRole['Software Development'];
+  const roleQuestions = questionsByRole[role] || questionsByRole['software-dev'];
   
   // Always start with 1 warm-up question
   const selectedWarmUp = [warmUpQuestions[Math.floor(Math.random() * warmUpQuestions.length)]];

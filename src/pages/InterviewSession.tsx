@@ -244,11 +244,16 @@ const InterviewSession = () => {
 
       setResponses(prev => [...prev, response]);
 
-      // Auto-advance to next question
+      // Auto-advance to next question, or finish if last question
       if (currentQuestion < totalQuestions) {
         setTimeout(() => {
           handleNextQuestion();
         }, 500);
+      } else {
+        // Last question - navigate to feedback after short delay
+        setTimeout(() => {
+          handleFinish();
+        }, 1000);
       }
 
     } catch (error) {
@@ -384,6 +389,11 @@ const InterviewSession = () => {
                     <div className="space-y-2 flex-1">
                       <div className="flex items-center gap-2 text-sm text-muted-foreground">
                         <span className="font-semibold text-primary">Sarah asks:</span>
+                        {currentQuestion === totalQuestions && (
+                          <span className="ml-2 px-2 py-1 text-xs font-semibold bg-accent text-accent-foreground rounded">
+                            Last Question
+                          </span>
+                        )}
                         <Button 
                           variant="ghost" 
                           size="sm"
@@ -636,21 +646,34 @@ const InterviewSession = () => {
             </Popover>
 
             <div className="space-y-3">
-              <Button 
-                className="w-full" 
-                onClick={handleNextQuestion}
-                disabled={currentQuestion === totalQuestions || isProcessing || !responses.some(r => r.questionNumber === currentQuestion)}
-              >
-                Next Question
-              </Button>
-              <Button 
-                onClick={handleFinish}
-                variant="outline" 
-                className="w-full"
-                disabled={responses.length === 0}
-              >
-                Finish & View Feedback
-              </Button>
+              {currentQuestion < totalQuestions && (
+                <Button 
+                  className="w-full" 
+                  onClick={handleNextQuestion}
+                  disabled={isProcessing || !responses.some(r => r.questionNumber === currentQuestion)}
+                >
+                  Next Question
+                </Button>
+              )}
+              {currentQuestion === totalQuestions && responses.some(r => r.questionNumber === currentQuestion) && (
+                <Button 
+                  onClick={handleFinish}
+                  className="w-full"
+                  size="lg"
+                >
+                  Submit & View Results
+                </Button>
+              )}
+              {currentQuestion < totalQuestions && (
+                <Button 
+                  onClick={handleFinish}
+                  variant="outline" 
+                  className="w-full"
+                  disabled={responses.length === 0}
+                >
+                  Finish Early & View Feedback
+                </Button>
+              )}
             </div>
           </div>
         </div>

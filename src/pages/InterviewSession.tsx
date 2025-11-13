@@ -294,7 +294,14 @@ const InterviewSession = () => {
 
   const handleFinish = () => {
     // Navigate to feedback with responses data
-    navigate('/feedback', { state: { responses } });
+    navigate('/feedback', { 
+      state: { 
+        responses,
+        role: config.role,
+        difficulty: config.difficulty,
+        mode: config.mode
+      } 
+    });
   };
 
   return (

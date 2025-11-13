@@ -14,6 +14,51 @@ export type Database = {
   }
   public: {
     Tables: {
+      interview_sessions: {
+        Row: {
+          clarity_score: number
+          confidence_score: number
+          created_at: string
+          difficulty: string
+          grammar_score: number
+          id: string
+          mode: string
+          overall_score: number
+          relevance_score: number
+          responses: Json
+          role: string
+          user_id: string
+        }
+        Insert: {
+          clarity_score: number
+          confidence_score: number
+          created_at?: string
+          difficulty: string
+          grammar_score: number
+          id?: string
+          mode: string
+          overall_score: number
+          relevance_score: number
+          responses: Json
+          role: string
+          user_id: string
+        }
+        Update: {
+          clarity_score?: number
+          confidence_score?: number
+          created_at?: string
+          difficulty?: string
+          grammar_score?: number
+          id?: string
+          mode?: string
+          overall_score?: number
+          relevance_score?: number
+          responses?: Json
+          role?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           alias: string

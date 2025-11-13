@@ -57,6 +57,19 @@ const InterviewSetup = () => {
   const handleStartInterview = async () => {
     if (!isReady) return;
 
+    // Check if user is authenticated
+    const { data: { session } } = await supabase.auth.getSession();
+    
+    if (!session?.user) {
+      toast({
+        title: "Authentication Required",
+        description: "Please sign up to start practicing",
+        variant: "destructive",
+      });
+      navigate('/auth');
+      return;
+    }
+
     navigate('/interview-session', { 
       state: { 
         role, 

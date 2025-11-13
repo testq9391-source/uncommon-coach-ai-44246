@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
@@ -11,10 +11,15 @@ import Footer from "@/components/Footer";
 
 const Feedback = () => {
   const location = useLocation();
+  const navigate = useNavigate();
   const responses = location.state?.responses || [];
+  const role = location.state?.role;
+  const difficulty = location.state?.difficulty;
+  const mode = location.state?.mode;
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
   const [isGeneratingAudio, setIsGeneratingAudio] = useState(false);
   const [isPlayingAudio, setIsPlayingAudio] = useState(false);
+  const [sessionSaved, setSessionSaved] = useState(false);
 
   // Calculate scores from responses
   const calculateScores = () => {
@@ -81,6 +86,40 @@ const Feedback = () => {
   };
 
   const feedback = aggregateFeedback();
+
+  // Save session to database
+  useEffect(() => {
+    const saveSession = async () => {
+      if (sessionSaved || responses.length === 0) return;
+
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session?.user) return;
+
+        const { error } = await supabase
+          .from('interview_sessions')
+          .insert({
+            user_id: session.user.id,
+            role: role || 'unknown',
+            difficulty: difficulty || 'unknown',
+            mode: mode || 'practice',
+            overall_score: scores.overall,
+            confidence_score: scores.confidence,
+            grammar_score: scores.grammar,
+            relevance_score: scores.relevance,
+            clarity_score: scores.clarity,
+            responses: responses
+          });
+
+        if (error) throw error;
+        setSessionSaved(true);
+      } catch (error) {
+        console.error('Error saving session:', error);
+      }
+    };
+
+    saveSession();
+  }, [responses, sessionSaved, scores, role, difficulty, mode]);
 
   const generateFeedbackAudio = async () => {
     setIsGeneratingAudio(true);

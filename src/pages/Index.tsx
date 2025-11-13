@@ -1,12 +1,29 @@
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Mic, Brain, TrendingUp, Users, Zap, Award } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import heroImage from "@/assets/hero-interview.jpg";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "@/components/ui/use-toast";
 
 const Index = () => {
+  const navigate = useNavigate();
+
+  const handleStartPracticing = async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+    
+    if (!session?.user) {
+      toast({
+        title: "Authentication Required",
+        description: "Please sign up to start practicing",
+      });
+      navigate('/auth');
+    } else {
+      navigate('/interview-setup');
+    }
+  };
   return (
     <div className="min-h-screen flex flex-col">
       <Navbar />
@@ -26,8 +43,8 @@ const Index = () => {
                 Master your interview skills with our AI-powered coaching platform. Experience realistic interview scenarios, receive instant feedback, and track your progress.
               </p>
               <div className="flex flex-col sm:flex-row gap-4">
-                <Button asChild size="lg" className="hover-lift">
-                  <Link to="/interview-setup">Start Practicing</Link>
+                <Button size="lg" className="hover-lift" onClick={handleStartPracticing}>
+                  Start Practicing
                 </Button>
                 <Button asChild variant="outline" size="lg" className="hover-lift">
                   <Link to="/dashboard">Learn More</Link>
@@ -131,8 +148,8 @@ const Index = () => {
           <p className="text-lg text-primary-foreground/90 max-w-2xl mx-auto">
             Join thousands of students who have improved their interview skills with SIZA
           </p>
-          <Button asChild size="lg" variant="secondary" className="hover-lift">
-            <Link to="/interview-setup">Get Started Free</Link>
+          <Button size="lg" variant="secondary" className="hover-lift" onClick={handleStartPracticing}>
+            Get Started Free
           </Button>
         </div>
       </section>

@@ -29,7 +29,7 @@ const Index = () => {
       <Navbar />
       
       {/* Hero Section */}
-      <section className="pt-32 pb-20 px-4 dust-texture relative overflow-hidden">
+      <section className="pt-24 pb-16 px-4 dust-texture relative overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-b from-primary/5 to-transparent"></div>
         <div className="container mx-auto relative z-10">
           <div className="grid lg:grid-cols-2 gap-12 items-center">

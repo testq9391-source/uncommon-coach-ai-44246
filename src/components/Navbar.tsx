@@ -18,12 +18,15 @@ import sizaLogo from "@/assets/siza-logo.png";
 const Navbar = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [userAlias, setUserAlias] = useState<string | null>(null);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
 
   useEffect(() => {
     const fetchUserProfile = async () => {
       const { data: { session } } = await supabase.auth.getSession();
+      setIsAuthenticated(!!session?.user);
+      
       if (session?.user) {
         const { data: profile } = await supabase
           .from("profiles")
@@ -34,6 +37,8 @@ const Navbar = () => {
         if (profile) {
           setUserAlias(profile.alias);
         }
+      } else {
+        setUserAlias(null);
       }
     };
 
@@ -49,6 +54,7 @@ const Navbar = () => {
   const handleLogout = async () => {
     await supabase.auth.signOut();
     setUserAlias(null);
+    setIsAuthenticated(false);
     toast({
       title: "Logged out",
       description: "See you next time!",
@@ -71,7 +77,7 @@ const Navbar = () => {
             <Link to="/progress" className="text-sm font-medium hover:text-primary transition-colors">
               Progress
             </Link>
-            {userAlias ? (
+            {isAuthenticated ? (
               <>
                 <Button asChild>
                   <Link to="/interview-setup">Start Practicing</Link>
@@ -81,7 +87,7 @@ const Navbar = () => {
                     <Button variant="ghost" className="relative h-10 w-10 rounded-full">
                       <Avatar className="h-10 w-10">
                         <AvatarFallback className="bg-primary text-primary-foreground">
-                          {userAlias.charAt(0).toUpperCase()}
+                          {userAlias ? userAlias.charAt(0).toUpperCase() : <User className="h-5 w-5" />}
                         </AvatarFallback>
                       </Avatar>
                     </Button>
@@ -89,7 +95,7 @@ const Navbar = () => {
                   <DropdownMenuContent className="w-56" align="end" forceMount>
                     <DropdownMenuLabel className="font-normal">
                       <div className="flex flex-col space-y-1">
-                        <p className="text-sm font-medium leading-none">{userAlias}</p>
+                        <p className="text-sm font-medium leading-none">{userAlias || "User"}</p>
                         <p className="text-xs leading-none text-muted-foreground">
                           Account
                         </p>
@@ -136,16 +142,16 @@ const Navbar = () => {
             <Link to="/progress" className="block text-sm font-medium hover:text-primary transition-colors">
               Progress
             </Link>
-            {userAlias ? (
+            {isAuthenticated ? (
               <>
                 <div className="flex items-center gap-3 px-2 py-2">
                   <Avatar className="h-10 w-10">
                     <AvatarFallback className="bg-primary text-primary-foreground">
-                      {userAlias.charAt(0).toUpperCase()}
+                      {userAlias ? userAlias.charAt(0).toUpperCase() : <User className="h-5 w-5" />}
                     </AvatarFallback>
                   </Avatar>
                   <div>
-                    <p className="text-sm font-medium">{userAlias}</p>
+                    <p className="text-sm font-medium">{userAlias || "User"}</p>
                     <p className="text-xs text-muted-foreground">Account</p>
                   </div>
                 </div>

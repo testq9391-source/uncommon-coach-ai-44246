@@ -11,7 +11,6 @@ import { useToast } from "@/hooks/use-toast";
 
 const Auth = () => {
   const [isLoading, setIsLoading] = useState(false);
-  const [alias, setAlias] = useState("");
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -25,53 +24,6 @@ const Auth = () => {
     };
     checkUser();
   }, [navigate]);
-
-  const handleQuickStart = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!alias.trim()) {
-      toast({
-        title: "Name required",
-        description: "Please enter your name to continue",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    setIsLoading(true);
-    try {
-      // Sign in anonymously
-      const { data, error } = await supabase.auth.signInAnonymously();
-      
-      if (error) throw error;
-
-      if (data.user) {
-        // Create profile with alias
-        const { error: profileError } = await supabase
-          .from("profiles")
-          .insert({
-            id: data.user.id,
-            alias: alias.trim(),
-          });
-
-        if (profileError) throw profileError;
-
-        toast({
-          title: "Welcome to SIZA!",
-          description: `Let's get started, ${alias}`,
-        });
-
-        navigate("/dashboard");
-      }
-    } catch (error: any) {
-      toast({
-        title: "Error",
-        description: error.message || "Failed to start session",
-        variant: "destructive",
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  };
 
   const handleEmailAuth = async (e: React.FormEvent, isSignUp: boolean) => {
     e.preventDefault();
@@ -139,41 +91,10 @@ const Auth = () => {
         <Card className="w-full max-w-md p-8 space-y-6 shadow-strong">
           <div className="text-center space-y-2">
             <h1 className="font-heading text-3xl">Welcome to SIZA</h1>
-            <p className="text-muted-foreground">Start practicing interviews in seconds</p>
+            <p className="text-muted-foreground">Create an account or sign in to start practicing</p>
           </div>
 
-          {/* Quick Start with Alias */}
-          <form onSubmit={handleQuickStart} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="alias">Your Name</Label>
-              <Input 
-                id="alias" 
-                type="text" 
-                placeholder="Enter your name"
-                value={alias}
-                onChange={(e) => setAlias(e.target.value)}
-                required 
-                maxLength={50}
-              />
-              <p className="text-xs text-muted-foreground">
-                No email or password needed - just enter your name to start
-              </p>
-            </div>
-            <Button type="submit" className="w-full" disabled={isLoading}>
-              {isLoading ? "Starting..." : "Quick Start"}
-            </Button>
-          </form>
-
-          <div className="relative">
-            <div className="absolute inset-0 flex items-center">
-              <span className="w-full border-t border-border" />
-            </div>
-            <div className="relative flex justify-center text-xs uppercase">
-              <span className="bg-card px-2 text-muted-foreground">Or use email</span>
-            </div>
-          </div>
-
-          {/* Traditional Email/Password Auth */}
+          {/* Email/Password Auth */}
           <Tabs defaultValue="login" className="w-full">
             <TabsList className="grid w-full grid-cols-2">
               <TabsTrigger value="login">Login</TabsTrigger>

@@ -5,6 +5,16 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+// ElevenLabs voice mapping
+const voiceMap: Record<string, string> = {
+  'alloy': '9BWtsMINqrJLrRacOk9x', // Aria
+  'echo': 'CwhRBWXzGAHq8TQ4Fs17', // Roger
+  'fable': 'EXAVITQu4vr4xnSDxMaL', // Sarah
+  'onyx': 'JBFqnCBsd6RMkjVDRZzb', // George
+  'nova': '9BWtsMINqrJLrRacOk9x', // Aria (default)
+  'shimmer': 'XB0fDUnXU5powFXDhCwa', // Charlotte
+};
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -17,32 +27,37 @@ serve(async (req) => {
       throw new Error('Text is required');
     }
 
-    const OPENAI_API_KEY = Deno.env.get('OPENAI_API_KEY');
+    const ELEVENLABS_API_KEY = Deno.env.get('ELEVENLABS_API_KEY');
     
-    if (!OPENAI_API_KEY) {
-      throw new Error('OPENAI_API_KEY is not configured');
+    if (!ELEVENLABS_API_KEY) {
+      throw new Error('ELEVENLABS_API_KEY is not configured');
     }
 
-    console.log('Converting text to speech with OpenAI TTS...');
+    // Map voice to ElevenLabs voice ID
+    const voiceId = voiceMap[voice] || voiceMap['nova'];
 
-    // Call OpenAI TTS API
-    const response = await fetch('https://api.openai.com/v1/audio/speech', {
+    console.log('Converting text to speech with ElevenLabs...');
+
+    // Call ElevenLabs TTS API
+    const response = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${OPENAI_API_KEY}`,
+        'xi-api-key': ELEVENLABS_API_KEY,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'tts-1',
-        input: text,
-        voice: voice, // alloy, echo, fable, onyx, nova, shimmer
-        response_format: 'mp3',
+        text: text,
+        model_id: 'eleven_turbo_v2_5',
+        voice_settings: {
+          stability: 0.5,
+          similarity_boost: 0.75,
+        },
       }),
     });
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('OpenAI TTS error:', response.status, errorText);
+      console.error('ElevenLabs TTS error:', response.status, errorText);
       throw new Error(`Text-to-speech API error: ${response.status}`);
     }
 
